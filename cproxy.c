@@ -94,7 +94,7 @@ int main(int argc, char *argv[]){
 
 		//Connect to the server
 		int conStatus = connect(serverSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-		if(conStatus != 0){
+        if(conStatus < 0){
 			fprintf(stderr, "Connection to the server failed with connection status %d\n", conStatus);
 			exit(1);
 		}

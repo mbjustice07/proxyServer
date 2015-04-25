@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 
 #include "linkedList.h"
 

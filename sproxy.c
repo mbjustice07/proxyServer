@@ -1,12 +1,5 @@
 // Alejandro Nicolette and Max Justice
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include "protocol.h"
 
 
@@ -101,7 +94,7 @@ int main(int argc, char * argv[]){
   if (localHost_Sent < 0)
     error ("ERROR writing to socket");
   // 0 out receive buffer
-  memset (recv_buffer, 0, sizeof (char) * 256);
+  memset (recv_bnuffer, 0, sizeof (char) * 256);
   // receive message from server
   localHost_Received = recv (localSockfd, recv_buffer, sizeof (recv_buffer), 0);
   if (localHost_Received < 0)

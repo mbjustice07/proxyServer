@@ -24,12 +24,16 @@ int main(int argc, char * argv[]){
   int portnum = 8888;
   // socket file descriptors, bytes sent and received
   int sockfd, session, bytes_sent, bytes_received;
+
   // stores the length of client's sockaddr struct for accept function
   socklen_t clilen;
+
   // receive buffer
   char buffer[256];
+
   // structure that contains info about internet addr
   struct sockaddr_in serv_addr, cli_addr;
+
   // server's reply
   char * reply = "Hello client";
 
@@ -37,6 +41,7 @@ int main(int argc, char * argv[]){
   sockfd = socket (AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
     error ("ERROR opening socket");
+
   // 0 out the struct
   memset (&serv_addr, 0, sizeof(serv_addr));
   // domain is Internet
