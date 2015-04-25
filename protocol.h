@@ -15,7 +15,7 @@
 #define CLIENT_PORT 5200
 #define LOCALHOST "127.0.0.1"
 
-#define SERVER_PORT 620
+#define SERVER_PORT 6200
 
 #define SPROXY_LOCAL 23
 
