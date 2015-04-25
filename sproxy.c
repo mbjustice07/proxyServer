@@ -1,7 +1,4 @@
-/*
-  This is a simple server program that uses stream sockets (TCP). It listens on port
-  8888, receives 1 short message from a client, then replies to client and exits.
- */
+// Alejandro Nicolette and Max Justice
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,9 +9,6 @@
 #include <unistd.h>
 #include "protocol.h"
 
-// localhost and client sockets
-int localSock;
-int clientSock;
 
 void error(char *msg){
   perror(msg);
@@ -71,8 +65,8 @@ int main(int argc, char * argv[]){
       // establish a connection with localhost upon accepting connection from cproxy
 
       //Create socket
-      localSock = socket(AF_INET, SOCK_STREAM, 0);
-      if(localSock < 0){
+      localSockfd = socket(AF_INET, SOCK_STREAM, 0);
+      if(localSockfd < 0){
           fprintf(stderr, "Unable to create socket to listen to localhost\n");
           exit(1);
       }
