@@ -1,15 +1,15 @@
 //Alejandro Nicolette and Maxwell Justice
 //CSC 425 Project 3
 
-#include "cproxy.h"
+#include "protocol.h"
 
 //localhost and server sockets
 int localSock;
 int serverSock;
 
 //Packet Processing functions
-int processIncomingPacket(void *packet);
-int processOutgoingPacket(void *packet);
+void processIncomingPacket(void *packet, int targetSock);
+void processOutgoingPacket(void *packet, int targetSock);
 
 int main(int argc, char *argv[]){
 	//Make sure an argument was given
@@ -54,12 +54,24 @@ int main(int argc, char *argv[]){
 	DB("Established connection to localhost\n");
 	
 
-	//Set up the fd set and declare the timeval struct
+	//Set up the fd sets and declare the timeval struct
 	fd_set readfds;
+	fd_set writefds;
 	struct timeval readTv;//Sockets will be checked at 1 second intervals
 	readTv.tv_sec = 1;
 	readTv.tv_usec = 0;
 	int n;
+
+	struct timeval zeroTime;//Used for polling sockets without waiting
+	zeroTime.tv_sec = 0;
+	zeroTime.tv_usec = 0;
+
+	//Set up buffers to hold packets for sending and receiving
+	char recBuff[IP_MAXPACKET];
+	char sendBuff[IP_MAXPACKET];
+	memset(recBuff, 0, IP_MAXPACKET);
+	memset(sendBuff, 0, IP_MAXPACKET);
+
 	/*
 	Connect to the server in one while loop and perform select operations, acknowledgement handling, and heartbeat counting in an inner loop.
 	If the connection to the server is broken, break out of the inner loop and connect again in the outer loop.
@@ -89,11 +101,15 @@ int main(int argc, char *argv[]){
 
 		DB("Established connection to the server at %s port %d\n", argv[1], SERVER_PORT);
 
-		//clear the set
+		//clear the sets
 		FD_ZERO(&readfds);
-		//add descriptors to the set
+		FD_ZERO(&writefds);
+		//add descriptors to the sets
 		FD_SET(localSock, &readfds);
 		FD_SET(serverSock, &readfds);
+
+		FD_SET(localSock, &writefds);
+		FD_SET(serverSock, &writefds);
 
 		//Set the n param
 		n = serverSock + 1;
@@ -101,8 +117,64 @@ int main(int argc, char *argv[]){
 		//Keep count of missed heartbeats
 		int heartbeatsMissed = 0;	
 	
+		//Return value of select
+		int rv;
+		
+		DB("About to enter inner loop to send/receive packets\n");
+
 		//Inner loop
 		while(1){
+
+			//Check for packets to receive
+			rv = select(n, &readfds, NULL, NULL, &readTv);
+			if(rv < 0){//Error
+				fprintf(stderr, "Error when selecting for received packets, rv = %d\n", rv);
+				exit(1);
+			}
+			else if(rv == 0){//Nothing received
+				heartbeatsMissed++;
+
+				DB("Nothing received, heartbeat missed. Missed heartbeat count = %d\n", heartbeatsMissed);
+
+				//TODO handle heartbeat logic here
+			}
+			else{//At least one socket has a packet to receive
+				int recStat;
+				int innerRv;
+				while(FD_ISSET(localSock, &readfds) || FD_ISSET(serverSock, &readfds)){
+					if(FD_ISSET(localSock, &readfds)){//Received something from the client to send to the server
+						//Handle client packets here
+						DB("Packet waiting in localSock\n");
+						
+						recStat = recv(localSock, recBuff, IP_MAXPACKET, 0);
+						if(recStat < 0){
+							fprintf(stderr, "Error when receiving on localSock, status = %d\n", recStat);
+							exit(1);
+						}
+							
+						processOutgoingPacket((void *)recBuff, serverSock);
+	
+					}
+					if(FD_ISSET(serverSock, &readfds)){//Received something from the server. May be a heartbeat or something to pass to the client.
+						DB("Packet waiting in serverSock\n");
+
+						recStat = recv(serverSock, sendBuff, IP_MAXPACKET, 0);	
+						if(recStat < 0){
+							fprintf(stderr, "Error when receiving on serverSock, status = %d\n", recStat);
+							exit(1);
+						}
+
+						processIncomingPacket((void *)sendBuff, localSock);
+
+					}
+					//Do another select (without blocking) to see if additional packets are waiting
+					innerRv = select(n, &readfds, NULL, NULL, &zeroTime);
+					if(innerRv < 0){//Error
+						fprintf(stderr, "Error when calling select() in inner loop. Error code = %d\n", innerRv);
+						exit(1);
+					}
+				}
+			}
 
 		}//End inner while
 
@@ -112,3 +184,18 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
+void processOutgoingPacket(void *packet, int targetSock){
+	int sendResult = send(targetSock, (char *)packet, IP_MAXPACKET, 0);
+	if(sendResult < 0){
+		fprintf(stderr, "Error when sending packet in processOutgoingPacket, result = %d\n", sendResult);
+		exit(1);
+	}
+}
+
+void processIncomingPacket(void *packet, int targetSock){
+	int sendResult = send(targetSock, (char *)packet, IP_MAXPACKET, 0);
+	if(sendResult < 0){
+		fprintf(stderr, "Error when sending packet in processIncomingPacket, result = %d\n", sendResult);
+		exit(1);
+	}
+}
