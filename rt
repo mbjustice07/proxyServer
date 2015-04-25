@@ -1,0 +1,1 @@
+rsync -av /Users/brennan/desktop/proxySer/ justice@lec:425/proj3/
