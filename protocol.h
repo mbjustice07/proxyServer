@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 
 
 #include "linkedList.h"

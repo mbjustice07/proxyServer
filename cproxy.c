@@ -95,7 +95,7 @@ int main(int argc, char *argv[]){
 		//Connect to the server
 		int conStatus = connect(serverSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
         if(conStatus < 0){
-			fprintf(stderr, "Connection to the server failed with connection status %d\n", conStatus);
+			fprintf(stderr, "Connection to the server failed with connection status %d\n%s\n", conStatus, strerror(errno));
 			exit(1);
 		}
 
@@ -105,10 +105,10 @@ int main(int argc, char *argv[]){
 		FD_ZERO(&readfds);
 		FD_ZERO(&writefds);
 		//add descriptors to the sets
-		FD_SET(localSock, &readfds);
+		FD_SET(session, &readfds);
 		FD_SET(serverSock, &readfds);
 
-		FD_SET(localSock, &writefds);
+		FD_SET(session, &writefds);
 		FD_SET(serverSock, &writefds);
 
 		//Set the n param
@@ -122,11 +122,22 @@ int main(int argc, char *argv[]){
 		
 		DB("About to enter inner loop to send/receive packets\n");
 
+		DB("Temp test receive\n");
+		
+		int testRecStat = recv(session, recBuff, IP_MAXPACKET, 0);
+		if(testRecStat < 0){
+			fprintf(stderr, "Error when receiving on localSock, status = %d\n%s\n", testRecStat, strerror(errno));
+			exit(1);
+		}
+		DB("TEST: Just received from localhost with status = %d\n", testRecStat);
+
 		//Inner loop
 		while(1){
 
 			//Check for packets to receive
 			rv = select(n, &readfds, NULL, NULL, &readTv);
+			readTv.tv_sec = 1;
+			readTv.tv_usec = 0;
 			if(rv < 0){//Error
 				fprintf(stderr, "Error when selecting for received packets, rv = %d\n", rv);
 				exit(1);
@@ -141,12 +152,12 @@ int main(int argc, char *argv[]){
 			else{//At least one socket has a packet to receive
 				int recStat;
 				int innerRv;
-				while(FD_ISSET(localSock, &readfds) || FD_ISSET(serverSock, &readfds)){
-					if(FD_ISSET(localSock, &readfds)){//Received something from the client to send to the server
+				while(FD_ISSET(session, &readfds) || FD_ISSET(serverSock, &readfds)){
+					if(FD_ISSET(session, &readfds)){//Received something from the client to send to the server
 						//Handle client packets here
-						DB("Packet waiting in localSock\n");
+						DB("Packet waiting in localhost\n");
 						
-						recStat = recv(localSock, recBuff, IP_MAXPACKET, 0);
+						recStat = recv(session, recBuff, IP_MAXPACKET, 0);
 						if(recStat < 0){
 							fprintf(stderr, "Error when receiving on localSock, status = %d\n", recStat);
 							exit(1);
@@ -164,7 +175,7 @@ int main(int argc, char *argv[]){
 							exit(1);
 						}
 
-						processIncomingPacket((void *)sendBuff, localSock);
+						processIncomingPacket((void *)sendBuff, session);
 
 					}
 					//Do another select (without blocking) to see if additional packets are waiting
