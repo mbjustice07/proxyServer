@@ -112,7 +112,7 @@ int main(int argc, char *argv[]){
 		FD_SET(serverSock, &writefds);
 
 		//Set the n param
-		n = serverSock + 1;
+		n = session > serverSock ? session : serverSock;
 
 		//Keep count of missed heartbeats
 		int heartbeatsMissed = 0;	
