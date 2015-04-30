@@ -53,10 +53,7 @@ int main(int argc, char *argv[]){
 
 	DB("Established connection to localhost\n");
 	
-
-	//Set up the fd sets and declare the timeval struct
-	fd_set readfds;
-	fd_set writefds;
+	//Set up timeval struct
 	struct timeval readTv;//Sockets will be checked at 1 second intervals
 	readTv.tv_sec = 1;
 	readTv.tv_usec = 0;
@@ -94,34 +91,16 @@ int main(int argc, char *argv[]){
 
 		//Connect to the server
 		int conStatus = connect(serverSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-        if(conStatus < 0){
+        	if(conStatus < 0){
 			fprintf(stderr, "Connection to the server failed with connection status %d\n%s\n", conStatus, strerror(errno));
 			exit(1);
 		}
 
 		DB("Established connection to the server at %s port %d\n", argv[1], SERVER_PORT);
 
-		//clear the sets
-		FD_ZERO(&readfds);
-		FD_ZERO(&writefds);
-		//add descriptors to the sets
-		FD_SET(session, &readfds);
-		FD_SET(serverSock, &readfds);
-
-		FD_SET(session, &writefds);
-		FD_SET(serverSock, &writefds);
-
-		//Set the n param
-		n = session > serverSock ? session : serverSock;
-
-		//Keep count of missed heartbeats
-		int heartbeatsMissed = 0;	
-	
-		//Return value of select
-		int rv;
 		
 		DB("About to enter inner loop to send/receive packets\n");
-
+/*
 		DB("Temp test receive\n");
 		
 		int testRecStat = recv(session, recBuff, IP_MAXPACKET, 0);
@@ -130,9 +109,35 @@ int main(int argc, char *argv[]){
 			exit(1);
 		}
 		DB("TEST: Just received from localhost with status = %d\n", testRecStat);
-
+*/
+		//Keep count of missed heartbeats
+		int heartbeatsMissed = 0;	
 		//Inner loop
 		while(1){
+			//Set up the fd sets 
+			fd_set readfds;
+			fd_set writefds;
+			//clear the sets
+			FD_ZERO(&readfds);
+			FD_ZERO(&writefds);
+			//add descriptors to the sets
+			FD_SET(session, &readfds);
+			FD_SET(serverSock, &readfds);
+
+			FD_SET(session, &writefds);
+			FD_SET(serverSock, &writefds);
+
+			//Set the n param
+			if(session >= serverSock){
+				n = session + 1;
+			}
+			else{
+				n = serverSock + 1;
+			}
+			DB("session = %d\n serverSock = %d\n n = %d\n", session, serverSock, n);
+	
+			//Return value of select
+			int rv;
 
 			//Check for packets to receive
 			rv = select(n, &readfds, NULL, NULL, &readTv);
@@ -150,6 +155,7 @@ int main(int argc, char *argv[]){
 				//TODO handle heartbeat logic here
 			}
 			else{//At least one socket has a packet to receive
+				DB("Something received\n");
 				int recStat;
 				int innerRv;
 				while(FD_ISSET(session, &readfds) || FD_ISSET(serverSock, &readfds)){
