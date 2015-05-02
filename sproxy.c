@@ -58,15 +58,15 @@ int main(int argc, char * argv[]){
      // 0 out the struct
     memset (&localServ_addr, 0, sizeof (localServ_addr));
     // domain is Internet
-     localServ_addr.sin_family = AF_INET;
+    localServ_addr.sin_family = AF_INET;
 
-     // copy convert and copy server's ip addr into serv_addr
-       if(inet_pton(AF_INET, LOCALHOST, &localServ_addr.sin_addr) < 0)
+    // copy convert and copy server's ip addr into serv_addr
+    if(inet_pton(AF_INET, LOCALHOST, &localServ_addr.sin_addr) < 0)
          error ("ERROR, copying ip\n");
-       // set server's port number, stores it in network byte order
-       localServ_addr.sin_port = htons (SPROXY_LOCAL);
-      // connect to server
-      if (connect(localSockfd,(struct sockaddr *) &localServ_addr, sizeof (localServ_addr)) < 0)
+    // set server's port number, stores it in network byte order
+    localServ_addr.sin_port = htons (SPROXY_LOCAL);
+    // connect to server
+    if (connect(localSockfd,(struct sockaddr *) &localServ_addr, sizeof (localServ_addr)) < 0)
         error ("ERROR connecting to local host");
       //******************************************************* end of localhost connection for telnet
 
@@ -143,7 +143,6 @@ int main(int argc, char * argv[]){
               DB("Something received\n");
               int recStat;
               int innerRv;
-              int localSockfd;
               while(FD_ISSET(proxSession, &readfds) || FD_ISSET(localSockfd, &readfds)){
                   if(FD_ISSET(proxSession, &readfds)){//Received something from the client to send to the server
                       //Handle client packets here
@@ -170,6 +169,14 @@ int main(int argc, char * argv[]){
                       processIncomingPacket((void *)send_buffer, proxSession);
 
                   }
+                  //Reset fds and do a non-blocking select to see if additional packets are waiting
+                      //clear the sets
+                      FD_ZERO(&readfds);
+                      FD_ZERO(&writefds);
+                      //add descriptors to the sets
+                      FD_SET(proxSession, &readfds);
+                      FD_SET(localSockfd, &readfds);
+
                   //Do another select (without blocking) to see if additional packets are waiting
                   innerRv = select(n, &readfds, NULL, NULL, &zeroTime);
                   if(innerRv < 0){//Error
