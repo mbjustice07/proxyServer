@@ -70,10 +70,8 @@ int main(int argc, char *argv[]){
 	memset(sendBuff, 0, IP_MAXPACKET);
 
 	/*
-	Connect to the server in one while loop and perform select operations,
-	acknowledgement handling, and heartbeat counting in an inner loop.
-	If the connection to the server is broken, break out of the inner loop 
-	and connect again in the outer loop.
+	Connect to the server in one while loop and perform select operations, acknowledgement handling, and heartbeat counting in an inner loop.
+	If the connection to the server is broken, break out of the inner loop and connect again in the outer loop.
 	*/
 	while(1){
 		//Create server socket
@@ -143,6 +141,7 @@ int main(int argc, char *argv[]){
 
 			//Check for packets to receive
 			rv = select(n, &readfds, NULL, NULL, &readTv);
+			//Reset timeval
 			readTv.tv_sec = 1;
 			readTv.tv_usec = 0;
 			if(rv < 0){//Error
@@ -164,13 +163,14 @@ int main(int argc, char *argv[]){
 					if(FD_ISSET(session, &readfds)){//Received something from the client to send to the server
 						//Handle client packets here
 						DB("Packet waiting in localhost\n");
-						
+					
 						recStat = recv(session, recBuff, IP_MAXPACKET, 0);
 						if(recStat < 0){
-							fprintf(stderr, "Error when receiving on localSock, status = %d\n", recStat);
+							fprintf(stderr, "Error when receiving on localSock, status = %d\nError message: %s\n", recStat, strerror(errno));
 							exit(1);
 						}
-							
+						DB("Received packet from localhost\n");						
+
 						processOutgoingPacket((void *)recBuff, serverSock);
 	
 					}
@@ -179,19 +179,29 @@ int main(int argc, char *argv[]){
 
 						recStat = recv(serverSock, sendBuff, IP_MAXPACKET, 0);	
 						if(recStat < 0){
-							fprintf(stderr, "Error when receiving on serverSock, status = %d\n", recStat);
+							fprintf(stderr, "Error when receiving on serversock, status = %d\nError message: %s\n", recStat, strerror(errno));
 							exit(1);
 						}
-
+						DB("Received packet from server\n");			
+			
 						processIncomingPacket((void *)sendBuff, session);
 
 					}
-					//Do another select (without blocking) to see if additional packets are waiting
+		
+					//Reset fds and do a non-blocking select to see if additional packets are waiting	
+					//clear the sets
+					FD_ZERO(&readfds);
+					FD_ZERO(&writefds);
+					//add descriptors to the sets
+					FD_SET(session, &readfds);
+					FD_SET(serverSock, &readfds);
+
 					innerRv = select(n, &readfds, NULL, NULL, &zeroTime);
 					if(innerRv < 0){//Error
-						fprintf(stderr, "Error when calling select() in inner loop. Error code = %d\n", innerRv);
+						fprintf(stderr, "Error when calling select() in inner loop. Return value = %d\n", innerRv);
 						exit(1);
 					}
+
 				}
 			}
 
