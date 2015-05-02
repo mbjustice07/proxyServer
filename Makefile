@@ -16,7 +16,14 @@ cproxy_D: cproxy.c
 	${CC} ${CFLAGS_D} -o cproxy cproxy.o linkedList.o ${LIBS}
 
 sproxy: sproxy.c
-	gcc -o sproxy sproxy.c ${LIBS}
+	${CC} ${CFLAGS} -c sproxy.c ${LIBS}
+	${CC} ${CFLAGS} -c linkedList.c ${LIBS}
+	${CC} ${CFLAGS} -o sproxy sproxy.o linkedList.o ${LIBS}
+
+sproxy_D: sproxy.c
+	${CC} ${CFLAGS_D} -c sproxy.c ${LIBS}
+	${CC} ${CFLAGS_D} -c linkedList.c ${LIBS}	
+	${CC} ${CFLAGS_D} -o sproxy sproxy.o linkedList.o ${LIBS}
 
 clean:
 	rm -f *.o core cproxy sproxy
