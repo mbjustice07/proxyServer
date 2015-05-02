@@ -70,8 +70,10 @@ int main(int argc, char *argv[]){
 	memset(sendBuff, 0, IP_MAXPACKET);
 
 	/*
-	Connect to the server in one while loop and perform select operations, acknowledgement handling, and heartbeat counting in an inner loop.
-	If the connection to the server is broken, break out of the inner loop and connect again in the outer loop.
+	Connect to the server in one while loop and perform select operations,
+	acknowledgement handling, and heartbeat counting in an inner loop.
+	If the connection to the server is broken, break out of the inner loop 
+	and connect again in the outer loop.
 	*/
 	while(1){
 		//Create server socket
