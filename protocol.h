@@ -52,7 +52,7 @@
 #endif
 
 #ifndef IP_MAXPACKET
-#define IP_MAXPACKET 65535
+#define IP_MAXPACKET 1500
 #endif
 
 typedef struct px

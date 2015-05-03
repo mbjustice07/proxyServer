@@ -8,8 +8,8 @@ int localSock;
 int serverSock;
 
 //Packet Processing functions
-void processIncomingPacket(void *packet, int targetSock);
-void processOutgoingPacket(void *packet, int targetSock);
+void processIncomingPacket(void *packet, int targetSock, int length);
+void processOutgoingPacket(void *packet, int targetSock, int length);
 
 int main(int argc, char *argv[]){
 	//Make sure an argument was given
@@ -97,19 +97,8 @@ int main(int argc, char *argv[]){
 		}
 
 		DB("Established connection to the server at %s port %d\n", argv[1], SERVER_PORT);
-
-		
 		DB("About to enter inner loop to send/receive packets\n");
-/*
-		DB("Temp test receive\n");
 		
-		int testRecStat = recv(session, recBuff, IP_MAXPACKET, 0);
-		if(testRecStat < 0){
-			fprintf(stderr, "Error when receiving on localSock, status = %d\n%s\n", testRecStat, strerror(errno));
-			exit(1);
-		}
-		DB("TEST: Just received from localhost with status = %d\n", testRecStat);
-*/
 		//Keep count of missed heartbeats
 		int heartbeatsMissed = 0;	
 		//Inner loop
@@ -134,7 +123,6 @@ int main(int argc, char *argv[]){
 			else{
 				n = serverSock + 1;
 			}
-			DB("session = %d\n serverSock = %d\n n = %d\n", session, serverSock, n);
 	
 			//Return value of select
 			int rv;
@@ -157,34 +145,39 @@ int main(int argc, char *argv[]){
 			}
 			else{//At least one socket has a packet to receive
 				DB("Something received\n");
-				int recStat;
+				int recLen;
 				int innerRv;
 				while(FD_ISSET(session, &readfds) || FD_ISSET(serverSock, &readfds)){
 					if(FD_ISSET(session, &readfds)){//Received something from the client to send to the server
 						//Handle client packets here
 						DB("Packet waiting in localhost\n");
-					
-						recStat = recv(session, recBuff, IP_MAXPACKET, 0);
-						if(recStat < 0){
-							fprintf(stderr, "Error when receiving on localSock, status = %d\nError message: %s\n", recStat, strerror(errno));
+						//Zero out the buffer
+						memset(recBuff, 0, IP_MAXPACKET);	
+						recLen = recv(session, recBuff, IP_MAXPACKET, 0);
+						if(recLen < 0){
+							fprintf(stderr, "Error when receiving on localSock, status = %d\nError message: %s\n", recLen, strerror(errno));
 							exit(1);
 						}
 						DB("Received packet from localhost\n");						
+						DB("The packet from localhost has a length of %d and contains: %s\n", (int)strlen(recBuff), recBuff);
 
-						processOutgoingPacket((void *)recBuff, serverSock);
+						processOutgoingPacket((void *)recBuff, serverSock, recLen);
 	
 					}
 					if(FD_ISSET(serverSock, &readfds)){//Received something from the server. May be a heartbeat or something to pass to the client.
 						DB("Packet waiting in serverSock\n");
+						//Zero out the buffer
+						memset(sendBuff, 0, IP_MAXPACKET);	
 
-						recStat = recv(serverSock, sendBuff, IP_MAXPACKET, 0);	
-						if(recStat < 0){
-							fprintf(stderr, "Error when receiving on serversock, status = %d\nError message: %s\n", recStat, strerror(errno));
+						recLen = recv(serverSock, sendBuff, IP_MAXPACKET, 0);	
+						if(recLen < 0){
+							fprintf(stderr, "Error when receiving on serversock, status = %d\nError message: %s\n", recLen, strerror(errno));
 							exit(1);
 						}
-						DB("Received packet from server\n");			
+						DB("Received packet from server\n");
+						DB("The packet from the server has a length of %d and contains: %s\n", (int)strlen(sendBuff), sendBuff);			
 			
-						processIncomingPacket((void *)sendBuff, session);
+						processIncomingPacket((void *)sendBuff, session, recLen);
 
 					}
 		
@@ -213,18 +206,21 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-void processOutgoingPacket(void *packet, int targetSock){
-	int sendResult = send(targetSock, (char *)packet, IP_MAXPACKET, 0);
+void processOutgoingPacket(void *packet, int targetSock, int length){
+	int sendResult = send(targetSock, (char *)packet, length, 0);
 	if(sendResult < 0){
 		fprintf(stderr, "Error when sending packet in processOutgoingPacket, result = %d\n", sendResult);
 		exit(1);
 	}
+	DB("Sent packet to server\n");
 }
 
-void processIncomingPacket(void *packet, int targetSock){
-	int sendResult = send(targetSock, (char *)packet, IP_MAXPACKET, 0);
+void processIncomingPacket(void *packet, int targetSock, int length){
+	int sendResult = send(targetSock, (char *)packet, length, 0);
 	if(sendResult < 0){
 		fprintf(stderr, "Error when sending packet in processIncomingPacket, result = %d\n", sendResult);
 		exit(1);
 	}
+	DB("Sent packet to localhost\n");
 }
+
